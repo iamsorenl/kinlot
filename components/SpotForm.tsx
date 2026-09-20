@@ -15,6 +15,7 @@ type DefaultValues = {
   // UTC ISO strings (or null), as stored in the DB.
   available_start?: string | null;
   available_end?: string | null;
+  photo_url?: string | null;
 };
 
 export default function SpotForm({
@@ -93,6 +94,12 @@ export default function SpotForm({
         onChange={(e) => setEndLocal(e.target.value)}
       />
       <input type="hidden" name="available_end" value={toUTCISO(endLocal) ?? ""} />
+      <label htmlFor="photo">Photo</label>
+      {defaultValues.photo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={defaultValues.photo_url} alt="" style={{ maxWidth: "12rem" }} />
+      )}
+      <input id="photo" name="photo" type="file" accept="image/*" />
       {state?.error && <p style={{ color: "crimson" }}>{state.error}</p>}
       <button disabled={pending} type="submit">
         Save

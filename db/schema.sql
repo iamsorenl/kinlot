@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS spot (
 -- login — checked in app/spots/actions.ts.
 ALTER TABLE spot ADD COLUMN IF NOT EXISTS is_protected BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- One photo per spot, stored in Vercel Blob; this column holds its public URL.
+ALTER TABLE spot ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
 CREATE TABLE IF NOT EXISTS rental (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   spot_id UUID NOT NULL REFERENCES spot(id) ON DELETE CASCADE,

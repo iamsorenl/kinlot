@@ -33,6 +33,7 @@ export default async function EditSpotPage({
     price_unit: string;
     available_start: string | Date | null;
     available_end: string | Date | null;
+    photo_url: string | null;
   }[];
   const spot = rows[0];
   if (!spot) notFound();
@@ -52,6 +53,7 @@ export default async function EditSpotPage({
           price_unit: spot.price_unit,
           available_start: toISO(spot.available_start),
           available_end: toISO(spot.available_end),
+          photo_url: spot.photo_url,
         }}
       />
     </main>

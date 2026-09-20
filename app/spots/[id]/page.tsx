@@ -23,6 +23,7 @@ type SpotDetail = Spot & {
   available_end: string | Date | null;
   owner_id: string | null;
   is_protected: boolean;
+  photo_url: string | null;
 };
 
 export default async function SpotPage({
@@ -65,6 +66,14 @@ export default async function SpotPage({
         <Link href="/">&larr; Back to map</Link>
       </p>
       <h1>{spot.name}</h1>
+      {spot.photo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={spot.photo_url}
+          alt={spot.name}
+          style={{ maxWidth: "100%", borderRadius: "0.5rem" }}
+        />
+      )}
       {spot.description && <p>{spot.description}</p>}
       <p>{address}</p>
       <p>
