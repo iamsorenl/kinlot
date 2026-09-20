@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { toLocalInput, toUTCISO } from "@/lib/time";
 
 type State = { error: string } | undefined;
 
@@ -11,8 +12,9 @@ type DefaultValues = {
   addr?: string | null;
   price_rate?: string;
   price_unit?: string;
-  available_start?: string;
-  available_end?: string;
+  // UTC ISO strings (or null), as stored in the DB.
+  available_start?: string | null;
+  available_end?: string | null;
 };
 
 export default function SpotForm({
@@ -23,6 +25,15 @@ export default function SpotForm({
   defaultValues?: DefaultValues;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  // The visible datetime-local inputs hold browser-local wall time and are
+  // never submitted directly (no `name`). Hidden inputs carry the UTC ISO
+  // conversion under the real field names — see lib/time.ts.
+  const [startLocal, setStartLocal] = useState(() =>
+    toLocalInput(defaultValues.available_start),
+  );
+  const [endLocal, setEndLocal] = useState(() =>
+    toLocalInput(defaultValues.available_end),
+  );
 
   return (
     <form
@@ -69,17 +80,19 @@ export default function SpotForm({
       <label htmlFor="available_start">Available from</label>
       <input
         id="available_start"
-        name="available_start"
         type="datetime-local"
-        defaultValue={defaultValues.available_start ?? ""}
+        value={startLocal}
+        onChange={(e) => setStartLocal(e.target.value)}
       />
+      <input type="hidden" name="available_start" value={toUTCISO(startLocal) ?? ""} />
       <label htmlFor="available_end">Available until</label>
       <input
         id="available_end"
-        name="available_end"
         type="datetime-local"
-        defaultValue={defaultValues.available_end ?? ""}
+        value={endLocal}
+        onChange={(e) => setEndLocal(e.target.value)}
       />
+      <input type="hidden" name="available_end" value={toUTCISO(endLocal) ?? ""} />
       {state?.error && <p style={{ color: "crimson" }}>{state.error}</p>}
       <button disabled={pending} type="submit">
         Save

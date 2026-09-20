@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toUTCISO } from "@/lib/time";
 
 export default function ReserveForm({ spotId }: { spotId: string }) {
   const router = useRouter();
@@ -13,16 +14,21 @@ export default function ReserveForm({ spotId }: { spotId: string }) {
     setError(null);
     const form = e.currentTarget;
     const formData = new FormData(form);
+    // datetime-local inputs are naive browser-local wall time; convert to an
+    // explicit UTC instant here, in the browser, where the real timezone is
+    // knowable (see lib/time.ts).
+    const start_ts = toUTCISO(String(formData.get("start_ts") ?? ""));
+    const end_ts = toUTCISO(String(formData.get("end_ts") ?? ""));
+    if (!start_ts || !end_ts) {
+      setError("Enter a valid start and end time");
+      return;
+    }
 
     setPending(true);
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        spot_id: spotId,
-        start_ts: formData.get("start_ts"),
-        end_ts: formData.get("end_ts"),
-      }),
+      body: JSON.stringify({ spot_id: spotId, start_ts, end_ts }),
     });
     setPending(false);
 

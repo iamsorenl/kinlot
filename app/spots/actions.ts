@@ -71,9 +71,11 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
   if ("error" in f) return f;
 
   const stored = (await sql`
-    SELECT addr FROM spot WHERE id = ${id} AND owner_id = ${userId}
-  `) as { addr: string | null }[];
+    SELECT addr, is_protected FROM spot WHERE id = ${id} AND owner_id = ${userId}
+  `) as { addr: string | null; is_protected: boolean }[];
   if (!stored[0]) return { error: "Not found or not yours" };
+  if (stored[0].is_protected)
+    return { error: "This is a protected demo spot and can't be edited" };
 
   let rows: { id: string }[];
   if (stored[0].addr !== f.address) {
@@ -86,7 +88,7 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
         country = ${geo.country}, lat = ${geo.lat}, lng = ${geo.lng},
         price_rate = ${f.price_rate}, price_unit = ${f.price_unit},
         available_start = ${f.available_start}, available_end = ${f.available_end}
-      WHERE id = ${id} AND owner_id = ${userId}
+      WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
       RETURNING id
     `) as { id: string }[];
   } else {
@@ -95,7 +97,7 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
         name = ${f.name}, description = ${f.description},
         price_rate = ${f.price_rate}, price_unit = ${f.price_unit},
         available_start = ${f.available_start}, available_end = ${f.available_end}
-      WHERE id = ${id} AND owner_id = ${userId}
+      WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
       RETURNING id
     `) as { id: string }[];
   }
@@ -108,11 +110,19 @@ export async function deleteSpot(formData: FormData): Promise<State> {
   if (!userId) redirect("/login");
 
   const id = String(formData.get("id") ?? "");
-  const rows = UUID_RE.test(id)
-    ? ((await sql`
-        DELETE FROM spot WHERE id = ${id} AND owner_id = ${userId} RETURNING id
-      `) as { id: string }[])
-    : [];
+  if (!UUID_RE.test(id)) return { error: "Not found or not yours" };
+
+  const stored = (await sql`
+    SELECT is_protected FROM spot WHERE id = ${id} AND owner_id = ${userId}
+  `) as { is_protected: boolean }[];
+  if (!stored[0]) return { error: "Not found or not yours" };
+  if (stored[0].is_protected)
+    return { error: "This is a protected demo spot and can't be deleted" };
+
+  const rows = (await sql`
+    DELETE FROM spot WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
+    RETURNING id
+  `) as { id: string }[];
   if (!rows[0]) return { error: "Not found or not yours" };
   redirect("/");
 }

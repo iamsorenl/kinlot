@@ -10,8 +10,7 @@ export const dynamic = "force-dynamic";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const toLocal = (v: string | Date | null) =>
-  v ? new Date(v).toISOString().slice(0, 16) : "";
+const toISO = (v: string | Date | null) => (v ? new Date(v).toISOString() : null);
 
 export default async function EditSpotPage({
   params,
@@ -51,8 +50,8 @@ export default async function EditSpotPage({
           addr: spot.addr,
           price_rate: spot.price_rate,
           price_unit: spot.price_unit,
-          available_start: toLocal(spot.available_start),
-          available_end: toLocal(spot.available_end),
+          available_start: toISO(spot.available_start),
+          available_end: toISO(spot.available_end),
         }}
       />
     </main>
