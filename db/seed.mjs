@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
+import { hashPassword } from "../lib/auth-core.ts";
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -122,5 +123,41 @@ for (const s of spots) {
   `;
 }
 
+// Demo account so "My spots" isn't empty for someone exploring the app.
+// Publicly documented in README — not a real user, no real data behind it.
+const [demo] = await sql`
+  INSERT INTO account (email, password_hash)
+  VALUES ('demo@parkme2.app', ${hashPassword("demo12345")})
+  RETURNING id
+`;
+
+const demoSpots = [
+  {
+    name: "Demo Driveway (test listing)",
+    description:
+      "Sample listing owned by the demo account, so 'My spots' has something in it when exploring ParkMe2. Not a real parking spot.",
+    addr: "115 Cooper St",
+    lat: 36.974627,
+    lng: -122.026765,
+    price_rate: 5,
+  },
+  {
+    name: "Demo Garage Spot (test listing)",
+    description:
+      "Second sample listing from the demo account, showing what an hourly spot looks like end to end. Not a real parking spot.",
+    addr: "1100 Pacific Ave",
+    lat: 36.974923,
+    lng: -122.02697,
+    price_rate: 3,
+  },
+];
+
+for (const s of demoSpots) {
+  await sql`
+    INSERT INTO spot (name, description, addr, zipcode, locality, region, country, lat, lng, price_rate, price_unit, owner_id)
+    VALUES (${s.name}, ${s.description}, ${s.addr}, '95060', 'Santa Cruz', 'California', 'US', ${s.lat}, ${s.lng}, ${s.price_rate}, 'hour', ${demo.id})
+  `;
+}
+
 const [{ count }] = await sql`SELECT count(*)::int AS count FROM spot`;
-console.log(`Seeded ${count} spots`);
+console.log(`Seeded ${count} spots (2 owned by demo@parkme2.app)`);

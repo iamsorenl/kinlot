@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import SpotMap, { type Spot } from "@/components/SpotMap";
 import Header from "@/components/Header";
+import ReserveForm from "@/components/ReserveForm";
 import { priceLabel } from "@/lib/price";
 import { deleteSpot } from "@/app/spots/actions";
 
@@ -44,6 +45,13 @@ export default async function SpotPage({
   const spot = rows[0];
   if (!spot) notFound();
 
+  const userId = await getUserId();
+  const upcoming = (await sql`
+    SELECT id, start_ts, end_ts FROM rental
+    WHERE spot_id = ${id} AND end_ts > now()
+    ORDER BY start_ts
+  `) as { id: string; start_ts: string; end_ts: string }[];
+
   const address = [
     spot.addr,
     spot.locality,
@@ -77,7 +85,7 @@ export default async function SpotPage({
       <p>
         <strong>{priceLabel(spot)}</strong>
       </p>
-      {spot.owner_id !== null && spot.owner_id === (await getUserId()) && (
+      {spot.owner_id !== null && spot.owner_id === userId && (
         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
           <Link href={`/spots/${spot.id}/edit`}>Edit</Link>
           <form
@@ -94,6 +102,28 @@ export default async function SpotPage({
       <div style={{ height: "20rem" }}>
         <SpotMap center={[spot.lat, spot.lng]} zoom={16} spots={[spot]} />
       </div>
+
+      <h2>Reserve this spot</h2>
+      {userId ? (
+        <ReserveForm spotId={spot.id} />
+      ) : (
+        <p>
+          <Link href="/login">Reserve this spot</Link>
+        </p>
+      )}
+
+      <h2>Upcoming reservations</h2>
+      {upcoming.length === 0 ? (
+        <p>No upcoming reservations &mdash; this spot is open.</p>
+      ) : (
+        <ul>
+          {upcoming.map((r) => (
+            <li key={r.id}>
+              {fmt(r.start_ts)} &ndash; {fmt(r.end_ts)}
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }
