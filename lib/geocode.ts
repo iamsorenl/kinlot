@@ -10,7 +10,7 @@ type Geo = {
 export async function geocode(address: string): Promise<Geo | null> {
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(address)}`,
-    { headers: { "User-Agent": "ParkMe2/0.1 (iamsorenl@gmail.com)" } },
+    { headers: { "User-Agent": "Kinlot/0.1 (iamsorenl@gmail.com)" } },
   );
   if (!res.ok) return null;
   const [hit] = await res.json();

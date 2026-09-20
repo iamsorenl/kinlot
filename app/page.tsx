@@ -47,7 +47,7 @@ export default async function Home({
           gap: "0.5rem",
         }}
       >
-        <h1 style={{ margin: 0 }}>ParkMe2 &mdash; find and reserve parking</h1>
+        <h1 style={{ margin: 0 }}>Kinlot &mdash; rent a neighbor&rsquo;s parking space</h1>
         <Header />
       </div>
       <div style={{ margin: "0 1rem 0.5rem" }}>
