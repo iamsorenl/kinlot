@@ -21,6 +21,7 @@ export default async function Header() {
           <Link href="/my-spots">My spots</Link>
           <Link href="/my-reservations">My reservations</Link>
           <Link href="/spots/new">Add a spot</Link>
+          <Link href="/profile">Edit profile</Link>
           <form action={logout}>
             <button type="submit">Log out</button>
           </form>

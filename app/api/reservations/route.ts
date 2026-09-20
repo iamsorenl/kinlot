@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { overlapsWindow } from "@/lib/overlap";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -38,9 +39,7 @@ export async function POST(request: Request) {
       SELECT ${spotId}, ${userId}, ${startTs}, ${endTs}
       WHERE NOT EXISTS (
         SELECT 1 FROM rental
-        WHERE spot_id = ${spotId}
-          AND start_ts < ${endTs}::timestamptz
-          AND end_ts > ${startTs}::timestamptz
+        WHERE spot_id = ${spotId} AND ${overlapsWindow(startTs, endTs)}
       )
       RETURNING id
     `) as { id: string }[];
