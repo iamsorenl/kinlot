@@ -66,7 +66,15 @@ export default async function Home({
         )}
       </div>
       <div style={{ flex: 1 }}>
-        <SpotMap center={[36.974, -122.03]} zoom={13} spots={spots} />
+        {/* SpotMap only builds its Leaflet markers on mount (see its own
+            comment), so force a remount when the filter changes the spot
+            list — otherwise the map would keep showing stale pins. */}
+        <SpotMap
+          key={`${start ?? ""}|${end ?? ""}`}
+          center={[36.974, -122.03]}
+          zoom={13}
+          spots={spots}
+        />
       </div>
       <p style={{ margin: "0.5rem 1rem", color: "#555" }}>
         Browse the map without an account &mdash; sign up to list a spot or reserve one.
