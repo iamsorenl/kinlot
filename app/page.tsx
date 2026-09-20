@@ -25,6 +25,9 @@ export default async function Home() {
       <div style={{ flex: 1 }}>
         <SpotMap center={[36.974, -122.03]} zoom={13} spots={spots} />
       </div>
+      <p style={{ margin: "0.5rem 1rem", color: "#555" }}>
+        Browse the map without an account &mdash; sign up to list a spot or reserve one.
+      </p>
     </main>
   );
 }

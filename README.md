@@ -34,6 +34,10 @@ npm run dev
 
 Then open http://localhost:3000.
 
+## Demo account
+
+`npm run seed` creates `demo@parkme2.app` / `demo12345` with two sample listings, so "My spots" isn't empty when exploring the app. It's a public demo login, not a real user.
+
 ## Deployment
 
 Deploys automatically on push to `main`. Vercel's free tier can't build from org-owned repos, so it builds from the [iamsorenl/ParkMe2](https://github.com/iamsorenl/ParkMe2) mirror — `origin` has both push URLs, so a single `git push` updates the org repo and the mirror together.
