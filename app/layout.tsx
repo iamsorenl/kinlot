@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ParkMe2 — find and reserve parking",
+  title: "Kinlot — rent a neighbor's parking space",
   description:
     "Browse a map of parking spots, reserve one with a start and end time, or list your own spot for others to book.",
 };

@@ -2,18 +2,13 @@ import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { hashPassword } from "../lib/auth-core.ts";
 
-const sql = neon(process.env.DATABASE_URL);
-
-const schema = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
-for (const stmt of schema.split(";").map((s) => s.trim()).filter(Boolean)) {
-  await sql.query(stmt);
-}
+const SCHEMA_SQL = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
 
 // Real public parking in Santa Cruz, CA. Rates verified against city sources
 // (santacruzca.gov parking pages, beachboardwalk.com) as of 2026-07.
 // price_rate is $ per price_unit ('hour' default, or 'day' for flat-rate lots); 0 = free.
 // owner_id stays NULL = public default, not user-editable.
-const spots = [
+const CITY_SPOTS = [
   {
     name: "Soquel/Front Parking Garage",
     description:
@@ -116,22 +111,12 @@ const spots = [
   },
 ];
 
-for (const s of spots) {
-  await sql`
-    INSERT INTO spot (name, description, addr, zipcode, locality, region, country, lat, lng, price_rate, price_unit)
-    VALUES (${s.name}, ${s.description}, ${s.addr}, '95060', 'Santa Cruz', 'California', 'US', ${s.lat}, ${s.lng}, ${s.price_rate}, ${s.price_unit ?? "hour"})
-  `;
-}
-
 // Demo account so "My spots" isn't empty for someone exploring the app.
 // Publicly documented in README — not a real user, no real data behind it.
-const [demo] = await sql`
-  INSERT INTO account (email, password_hash)
-  VALUES ('demo@parkme2.app', ${hashPassword("demo12345")})
-  RETURNING id
-`;
-
-const demoSpots = [
+// Its listings are marked is_protected so the demo login can't vandalize
+// them for everyone else (see app/spots/actions.ts).
+const DEMO_EMAIL = "demo@parkme2.app";
+const DEMO_SPOTS = [
   {
     name: "Demo Driveway (test listing)",
     description:
@@ -152,12 +137,51 @@ const demoSpots = [
   },
 ];
 
-for (const s of demoSpots) {
-  await sql`
-    INSERT INTO spot (name, description, addr, zipcode, locality, region, country, lat, lng, price_rate, price_unit, owner_id)
-    VALUES (${s.name}, ${s.description}, ${s.addr}, '95060', 'Santa Cruz', 'California', 'US', ${s.lat}, ${s.lng}, ${s.price_rate}, 'hour', ${demo.id})
+// Additive-only: applies the schema (creates what's missing, never drops)
+// and inserts seed data if it isn't already there. Safe to run repeatedly,
+// including against a database that already has real data in it.
+export async function applySchemaAndSeed(sql) {
+  // Naive split on ";" — schema.sql must not contain a literal ";" inside a
+  // comment or string, or this will split mid-statement.
+  for (const stmt of SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean)) {
+    await sql.query(stmt);
+  }
+
+  const [{ count: cityCount }] = await sql`
+    SELECT count(*)::int AS count FROM spot WHERE owner_id IS NULL
   `;
+  if (cityCount === 0) {
+    for (const s of CITY_SPOTS) {
+      await sql`
+        INSERT INTO spot (name, description, addr, zipcode, locality, region, country, lat, lng, price_rate, price_unit)
+        VALUES (${s.name}, ${s.description}, ${s.addr}, '95060', 'Santa Cruz', 'California', 'US', ${s.lat}, ${s.lng}, ${s.price_rate}, ${s.price_unit ?? "hour"})
+      `;
+    }
+  }
+
+  let [demo] = await sql`SELECT id FROM account WHERE email = ${DEMO_EMAIL}`;
+  if (!demo) {
+    [demo] = await sql`
+      INSERT INTO account (email, password_hash)
+      VALUES (${DEMO_EMAIL}, ${hashPassword("demo12345")})
+      RETURNING id
+    `;
+    for (const s of DEMO_SPOTS) {
+      await sql`
+        INSERT INTO spot (name, description, addr, zipcode, locality, region, country, lat, lng, price_rate, price_unit, owner_id, is_protected)
+        VALUES (${s.name}, ${s.description}, ${s.addr}, '95060', 'Santa Cruz', 'California', 'US', ${s.lat}, ${s.lng}, ${s.price_rate}, 'hour', ${demo.id}, TRUE)
+      `;
+    }
+  }
+
+  const [{ count }] = await sql`SELECT count(*)::int AS count FROM spot`;
+  return count;
 }
 
-const [{ count }] = await sql`SELECT count(*)::int AS count FROM spot`;
-console.log(`Seeded ${count} spots (2 owned by demo@parkme2.app)`);
+// Only run the CLI body when this file is executed directly (not when
+// db/reset.mjs imports applySchemaAndSeed).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const sql = neon(process.env.DATABASE_URL);
+  const count = await applySchemaAndSeed(sql);
+  console.log(`Schema up to date. ${count} spots in the database.`);
+}

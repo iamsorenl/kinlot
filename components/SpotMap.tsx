@@ -81,6 +81,10 @@ export default function SpotMap({
       cancelled = true;
       map?.remove();
     };
+    // Mount-only: markers are built once from the initial `spots`/`center`/
+    // `zoom` props and never diffed against later prop changes. A caller
+    // whose spot list can change (e.g. a filtered list) must force a
+    // remount — pass a `key` that changes with the filter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

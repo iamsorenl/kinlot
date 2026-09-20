@@ -7,12 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node --env-file=.env.local db/seed.mjs"
+    "seed": "node --env-file=.env.local db/seed.mjs",
+    "db:reset": "node --env-file=.env.local db/reset.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.8.0",
     "leaflet": "^1.9.4",
-    "next": "16.2.10",
+    "next": "^16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

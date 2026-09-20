@@ -1,4 +1,4 @@
-# ParkMe2
+# Kinlot
 
 A peer-to-peer parking spot marketplace: list your driveway or parking spot, and let others find and reserve it on a map.
 
@@ -10,11 +10,11 @@ This is an experiment in resurrecting an undergrad project as something actually
 
 The original [ParkMe](https://github.com/ParkMeCSE115a/parkme) was built for CSE 115A (Software Methodology) at UC Santa Cruz by Joseph, Maxim, Alper, Neel, and Soren. It let users find and reserve available parking spots near them, with spot owners listing their own spaces. It worked — but only if you cloned the repo, installed Flutter and Xcode/Android Studio, spun up Postgres in Docker, filled in two `.env` files and a Google Maps API key, and ran the backend and mobile app side by side. Nobody could just *visit* it.
 
-ParkMe2 is the same idea rebuilt in its simplest form as a single deployable web app, so there's a URL anyone can open.
+Kinlot is the same idea rebuilt in its simplest form as a single deployable web app, so there's a URL anyone can open.
 
 ## How this version differs from the original
 
-| | Original ParkMe (2023) | ParkMe2 |
+| | Original ParkMe (2023) | Kinlot |
 |---|---|---|
 | Frontend | Flutter mobile app (iOS/Android) | Next.js web app, responsive |
 | Backend | Separate Node/tsoa/Express API | Next.js API routes, same repo |
@@ -40,4 +40,4 @@ Then open http://localhost:3000.
 
 ## Deployment
 
-Deploys automatically on push to `main`. Vercel's free tier can't build from org-owned repos, so it builds from the [iamsorenl/ParkMe2](https://github.com/iamsorenl/ParkMe2) mirror — `origin` has both push URLs, so a single `git push` updates the org repo and the mirror together.
+Deploys automatically on push to `main`. Vercel's free tier can't build from org-owned repos, so it builds from the [iamsorenl/kinlot](https://github.com/iamsorenl/kinlot) mirror — `origin` has both push URLs, so a single `git push` updates the org repo and the mirror together.

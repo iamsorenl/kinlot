@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import Header from "@/components/Header";
+import LocalTime from "@/components/LocalTime";
 import { priceLabel } from "@/lib/price";
 import { deleteSpot } from "@/app/spots/actions";
 
@@ -17,15 +18,8 @@ type Row = {
   price_unit: "hour" | "day";
   available_start: string | Date | null;
   available_end: string | Date | null;
+  is_protected: boolean;
 };
-
-const fmt = (v: string | Date | null) =>
-  v &&
-  new Date(v).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/Los_Angeles",
-  });
 
 export default async function MySpotsPage() {
   const userId = await getUserId();
@@ -33,7 +27,7 @@ export default async function MySpotsPage() {
 
   const spots = (await sql`
     SELECT id, name, addr, locality, price_rate, price_unit,
-           available_start, available_end
+           available_start, available_end, is_protected
     FROM spot WHERE owner_id = ${userId} ORDER BY name
   `) as Row[];
 
@@ -48,39 +42,48 @@ export default async function MySpotsPage() {
       ) : (
         <ul style={{ padding: 0, listStyle: "none" }}>
           {spots.map((spot) => {
-            const start = fmt(spot.available_start);
-            const end = fmt(spot.available_end);
-            const availability =
-              start && end
-                ? `Available ${start} to ${end}`
-                : start
-                  ? `Available from ${start}`
-                  : end
-                    ? `Available until ${end}`
-                    : null;
+            const hasStart = Boolean(spot.available_start);
+            const hasEnd = Boolean(spot.available_end);
             return (
               <li key={spot.id} style={{ marginBottom: "1rem" }}>
                 <Link href={`/spots/${spot.id}`}>{spot.name}</Link>{" "}
                 <strong>{priceLabel(spot)}</strong>
                 <br />
                 {[spot.addr, spot.locality].filter(Boolean).join(", ")}
-                {availability && (
+                {(hasStart || hasEnd) && (
                   <>
                     <br />
-                    {availability}
+                    {hasStart && (
+                      <>
+                        Available <LocalTime value={spot.available_start} />
+                      </>
+                    )}
+                    {hasStart && hasEnd && " to "}
+                    {!hasStart && hasEnd && (
+                      <>
+                        Available until <LocalTime value={spot.available_end} />
+                      </>
+                    )}
+                    {hasStart && hasEnd && <LocalTime value={spot.available_end} />}
                   </>
                 )}
                 <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                  <Link href={`/spots/${spot.id}/edit`}>Edit</Link>
-                  <form
-                    action={async (formData: FormData) => {
-                      "use server";
-                      await deleteSpot(formData);
-                    }}
-                  >
-                    <input type="hidden" name="id" value={spot.id} />
-                    <button type="submit">Delete</button>
-                  </form>
+                  {spot.is_protected ? (
+                    <em>Protected demo spot</em>
+                  ) : (
+                    <>
+                      <Link href={`/spots/${spot.id}/edit`}>Edit</Link>
+                      <form
+                        action={async (formData: FormData) => {
+                          "use server";
+                          await deleteSpot(formData);
+                        }}
+                      >
+                        <input type="hidden" name="id" value={spot.id} />
+                        <button type="submit">Delete</button>
+                      </form>
+                    </>
+                  )}
                 </div>
               </li>
             );

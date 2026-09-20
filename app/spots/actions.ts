@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { del } from "@vercel/blob";
 import { sql } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
+import { uploadSpotPhoto } from "@/lib/photo";
 
 type State = { error: string } | undefined;
 
@@ -45,17 +47,20 @@ export async function createSpot(_state: State, formData: FormData): Promise<Sta
   const f = readFields(formData);
   if ("error" in f) return f;
 
+  const photo = await uploadSpotPhoto(formData);
+  if (photo && "error" in photo) return photo;
+
   const geo = await geocode(f.address);
   if (!geo) return { error: "Address not found" };
 
   await sql`
     INSERT INTO spot
       (name, description, addr, zipcode, locality, region, country,
-       lat, lng, price_rate, price_unit, available_start, available_end, owner_id)
+       lat, lng, price_rate, price_unit, available_start, available_end, owner_id, photo_url)
     VALUES
       (${f.name}, ${f.description}, ${f.address}, ${geo.zipcode}, ${geo.locality},
        ${geo.region}, ${geo.country}, ${geo.lat}, ${geo.lng}, ${f.price_rate},
-       ${f.price_unit}, ${f.available_start}, ${f.available_end}, ${userId})
+       ${f.price_unit}, ${f.available_start}, ${f.available_end}, ${userId}, ${photo?.url ?? null})
   `;
   redirect("/my-spots");
 }
@@ -71,9 +76,15 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
   if ("error" in f) return f;
 
   const stored = (await sql`
-    SELECT addr FROM spot WHERE id = ${id} AND owner_id = ${userId}
-  `) as { addr: string | null }[];
+    SELECT addr, is_protected, photo_url FROM spot WHERE id = ${id} AND owner_id = ${userId}
+  `) as { addr: string | null; is_protected: boolean; photo_url: string | null }[];
   if (!stored[0]) return { error: "Not found or not yours" };
+  if (stored[0].is_protected)
+    return { error: "This is a protected demo spot and can't be edited" };
+
+  const photo = await uploadSpotPhoto(formData);
+  if (photo && "error" in photo) return photo;
+  const photoUrl = photo?.url ?? stored[0].photo_url;
 
   let rows: { id: string }[];
   if (stored[0].addr !== f.address) {
@@ -85,8 +96,9 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
         zipcode = ${geo.zipcode}, locality = ${geo.locality}, region = ${geo.region},
         country = ${geo.country}, lat = ${geo.lat}, lng = ${geo.lng},
         price_rate = ${f.price_rate}, price_unit = ${f.price_unit},
-        available_start = ${f.available_start}, available_end = ${f.available_end}
-      WHERE id = ${id} AND owner_id = ${userId}
+        available_start = ${f.available_start}, available_end = ${f.available_end},
+        photo_url = ${photoUrl}
+      WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
       RETURNING id
     `) as { id: string }[];
   } else {
@@ -94,12 +106,18 @@ export async function updateSpot(_state: State, formData: FormData): Promise<Sta
       UPDATE spot SET
         name = ${f.name}, description = ${f.description},
         price_rate = ${f.price_rate}, price_unit = ${f.price_unit},
-        available_start = ${f.available_start}, available_end = ${f.available_end}
-      WHERE id = ${id} AND owner_id = ${userId}
+        available_start = ${f.available_start}, available_end = ${f.available_end},
+        photo_url = ${photoUrl}
+      WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
       RETURNING id
     `) as { id: string }[];
   }
   if (!rows[0]) return { error: "Not found or not yours" };
+  // Best-effort: drop the replaced blob so it doesn't sit around counting
+  // against the free storage tier. Not fatal if it fails.
+  if (photo?.url && stored[0].photo_url && stored[0].photo_url !== photo.url) {
+    await del(stored[0].photo_url).catch(() => {});
+  }
   redirect("/my-spots");
 }
 
@@ -108,11 +126,20 @@ export async function deleteSpot(formData: FormData): Promise<State> {
   if (!userId) redirect("/login");
 
   const id = String(formData.get("id") ?? "");
-  const rows = UUID_RE.test(id)
-    ? ((await sql`
-        DELETE FROM spot WHERE id = ${id} AND owner_id = ${userId} RETURNING id
-      `) as { id: string }[])
-    : [];
+  if (!UUID_RE.test(id)) return { error: "Not found or not yours" };
+
+  const stored = (await sql`
+    SELECT is_protected, photo_url FROM spot WHERE id = ${id} AND owner_id = ${userId}
+  `) as { is_protected: boolean; photo_url: string | null }[];
+  if (!stored[0]) return { error: "Not found or not yours" };
+  if (stored[0].is_protected)
+    return { error: "This is a protected demo spot and can't be deleted" };
+
+  const rows = (await sql`
+    DELETE FROM spot WHERE id = ${id} AND owner_id = ${userId} AND is_protected = FALSE
+    RETURNING id
+  `) as { id: string }[];
   if (!rows[0]) return { error: "Not found or not yours" };
+  if (stored[0].photo_url) await del(stored[0].photo_url).catch(() => {});
   redirect("/");
 }

@@ -5,6 +5,7 @@ import { getUserId } from "@/lib/auth";
 import SpotMap, { type Spot } from "@/components/SpotMap";
 import Header from "@/components/Header";
 import ReserveForm from "@/components/ReserveForm";
+import LocalTime from "@/components/LocalTime";
 import { priceLabel } from "@/lib/price";
 import { deleteSpot } from "@/app/spots/actions";
 
@@ -21,15 +22,9 @@ type SpotDetail = Spot & {
   available_start: string | Date | null;
   available_end: string | Date | null;
   owner_id: string | null;
+  is_protected: boolean;
+  photo_url: string | null;
 };
-
-const fmt = (v: string | Date | null) =>
-  v &&
-  new Date(v).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/Los_Angeles",
-  });
 
 export default async function SpotPage({
   params,
@@ -61,16 +56,8 @@ export default async function SpotPage({
   ]
     .filter(Boolean)
     .join(", ");
-  const start = fmt(spot.available_start);
-  const end = fmt(spot.available_end);
-  const availability =
-    start && end
-      ? `Available ${start} to ${end}`
-      : start
-        ? `Available from ${start}`
-        : end
-          ? `Available until ${end}`
-          : "Availability not listed";
+  const hasStart = Boolean(spot.available_start);
+  const hasEnd = Boolean(spot.available_end);
 
   return (
     <main style={{ maxWidth: "40rem", margin: "0 auto", padding: "1rem" }}>
@@ -79,24 +66,57 @@ export default async function SpotPage({
         <Link href="/">&larr; Back to map</Link>
       </p>
       <h1>{spot.name}</h1>
+      {spot.photo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={spot.photo_url}
+          alt={spot.name}
+          style={{ maxWidth: "100%", borderRadius: "0.5rem" }}
+        />
+      )}
       {spot.description && <p>{spot.description}</p>}
       <p>{address}</p>
-      <p>{availability}</p>
+      <p>
+        {hasStart || hasEnd ? (
+          <>
+            {hasStart && (
+              <>
+                Available <LocalTime value={spot.available_start} />
+              </>
+            )}
+            {hasStart && hasEnd && " to "}
+            {!hasStart && hasEnd && (
+              <>
+                Available until <LocalTime value={spot.available_end} />
+              </>
+            )}
+            {hasStart && hasEnd && <LocalTime value={spot.available_end} />}
+          </>
+        ) : (
+          "Availability not listed"
+        )}
+      </p>
       <p>
         <strong>{priceLabel(spot)}</strong>
       </p>
       {spot.owner_id !== null && spot.owner_id === userId && (
         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-          <Link href={`/spots/${spot.id}/edit`}>Edit</Link>
-          <form
-            action={async (formData: FormData) => {
-              "use server";
-              await deleteSpot(formData);
-            }}
-          >
-            <input type="hidden" name="id" value={spot.id} />
-            <button type="submit">Delete</button>
-          </form>
+          {spot.is_protected ? (
+            <em>Protected demo spot</em>
+          ) : (
+            <>
+              <Link href={`/spots/${spot.id}/edit`}>Edit</Link>
+              <form
+                action={async (formData: FormData) => {
+                  "use server";
+                  await deleteSpot(formData);
+                }}
+              >
+                <input type="hidden" name="id" value={spot.id} />
+                <button type="submit">Delete</button>
+              </form>
+            </>
+          )}
         </div>
       )}
       <div style={{ height: "20rem" }}>
@@ -119,7 +139,7 @@ export default async function SpotPage({
         <ul>
           {upcoming.map((r) => (
             <li key={r.id}>
-              {fmt(r.start_ts)} &ndash; {fmt(r.end_ts)}
+              <LocalTime value={r.start_ts} /> &ndash; <LocalTime value={r.end_ts} />
             </li>
           ))}
         </ul>
